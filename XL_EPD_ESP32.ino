@@ -1,5 +1,5 @@
+#include "/Users/axelmansson/Documents/Arduino/libraries/QRCode/src/qrcode.h"
 #include <string>
-#include "qrcode.h"
 #include "Adafruit_ThinkInk.h"
 #include "Adafruit_GFX.h"
 #include "Adafruit_LC709203F.h"
