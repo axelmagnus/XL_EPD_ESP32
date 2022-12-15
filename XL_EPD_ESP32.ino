@@ -1,5 +1,6 @@
-#include "/Users/axelmansson/Documents/Arduino/libraries/QRCode/src/qrcode.h"
-#include <string>
+//#include "/Users/axelmansson/Documents/Arduino/libraries/QRCode/src/qrcode.h"
+#include "qrcode.h"
+//#include <string>
 #include "Adafruit_ThinkInk.h"
 #include "Adafruit_GFX.h"
 #include "Adafruit_LC709203F.h"
@@ -14,21 +15,12 @@
 #define EPD_RESET   -1 // can set to -1 and share with microcontroller Reset!
 #define EPD_BUSY    -1 // can set to -1 to not use a pin (will wait a fixed delay)
 #define COLOR1 EPD_BLACK
-#define Lcd_X 255
-#define Lcd_Y 122
+#define Lcd_X 212
+#define Lcd_Y 104
 
-// Uncomment the following line if you are using 2.13" Monochrome EPD with SSD1680
-ThinkInk_213_Mono_BN display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
-/* //ThinkInk_213_Mono_B74 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
+// Uncomment the following line if you are using 2.13" EPD with IL0373
+ThinkInk_213_Tricolor_Z16 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
 
-
-// Uncomment the following line if you are using 2.13" EPD with SSD1675
-// ThinkInk_213_Mono_B72 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
-
-// Uncomment the following line if you are using 2.13" EPD with SSD1675B
-// ThinkInk_213_Mono_B73 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
- */
-// set up the 'time/ISO-8601' topic
 AdafruitIO_Time *iso = io.time(AIO_TIME_ISO);
 Adafruit_LC709203F lc;
 Adafruit_AHTX0 aht;
@@ -47,6 +39,7 @@ String timeStamp;
 void setup() {
   Serial.begin(115200);
   while (!Serial) { delay(10); }
+  Serial.print("Starting");
 
   // Allocate memory to store the QR code.
   // memory size depends on version number
@@ -137,25 +130,18 @@ void setup() {
     display.begin();
     // large block of text
     display.clearBuffer();
+    display.display();
     display.setCursor(10, 10);
     display.setTextSize(3);
-    display.print(temp.temperature, 1);
-    display.setCursor(30, 10);
+    //display.print(temp.temperature, 1);
+    display.print(21.42, 1);
+    display.setCursor(10, 40);
     display.setTextSize(2);
-    display.print(humidity.relative_humidity, 1);
+    //display.print(humidity.relative_humidity, 1);
+    display.print(61.42, 1);
     display.display();
+    delay(1000);
 
-    display.clearBuffer();
-    for (int16_t i = 0; i < display.width(); i += 4)
-    {
-      display.drawLine(0, 0, i, display.height() - 1, COLOR1);
-    }
-
-    for (int16_t i = 0; i < display.height(); i += 4)
-    {
-      display.drawLine(display.width() - 1, 0, 0, i, COLOR1); // on grayscale this will be mid-gray
-    }
-    display.display();
   }
 }
 
