@@ -1,20 +1,23 @@
-//#include "/Users/axelmansson/Documents/Arduino/libraries/QRCode/src/qrcode.h"
+// #include "/Users/axelmansson/Documents/Arduino/libraries/QRCode/src/qrcode.h"
 #include "qrcode.h"
-//#include <string>
+// #include <string>
 #include "Adafruit_ThinkInk.h"
 #include "Adafruit_GFX.h"
 #include "Adafruit_LC709203F.h"
 #include <SPI.h>
 #include <Adafruit_AHTX0.h>
 #include "config.h"
-//#include <Fonts/FreeMonoBoldOblique18pt7b.h> 
+#include <Fonts/FreeSerifBold24pt7b.h>
+#include <Fonts/FreeMonoOblique12pt7b.h>
+#include <Fonts/FreeSans9pt7b.h>
 
 #define SRAM_CS 32
 #define EPD_CS 15
-#define EPD_DC 33  
-#define EPD_RESET   -1 // can set to -1 and share with microcontroller Reset!
-#define EPD_BUSY    -1 // can set to -1 to not use a pin (will wait a fixed delay)
+#define EPD_DC 33
+#define EPD_RESET -1 // can set to -1 and share with microcontroller Reset!
+#define EPD_BUSY -1  // can set to -1 to not use a pin (will wait a fixed delay)
 #define COLOR1 EPD_BLACK
+#define COLOR2 EPD_RED
 #define Lcd_X 212
 #define Lcd_Y 104
 
@@ -25,20 +28,24 @@ AdafruitIO_Time *iso = io.time(AIO_TIME_ISO);
 Adafruit_LC709203F lc;
 Adafruit_AHTX0 aht;
 QRCode qrcode;
-AdafruitIO_Group *group = io.group("ESP32S2TFT");
+AdafruitIO_Group *group = io.group("ESP32EPD");
 
 const int QRcode_Version = 4; //  set the version (range 1->40)
 const int QRcode_ECC = 0;     //  set the Error Correction level (range 0-3) or symbolic (ECC_LOW, ECC_MEDIUM, ECC_QUARTILE and ECC_HIGH)
 
-float temptemp=19.7;
+float temptemp = 19.7;
 sensors_event_t humidity, temp; // global for show foo
 String formattedDate;
 String dayStamp;
 String timeStamp;
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
-  while (!Serial) { delay(10); }
+  while (!Serial)
+  {
+    delay(10);
+  }
   Serial.print("Starting");
 
   // Allocate memory to store the QR code.
@@ -48,15 +55,15 @@ void setup() {
 
   pinMode(LED_BUILTIN, OUTPUT);
 
-  //pinMode(TFT_I2C_POWER, OUTPUT);
+  // pinMode(TFT_I2C_POWER, OUTPUT);
   /* delay(1);
   bool polarity = digitalRead(TFT_I2C_POWER);
   // Serial.println(polarity); =0 usually
   pinMode(TFT_I2C_POWER, OUTPUT);
   digitalWrite(TFT_I2C_POWER, !polarity);
    */
-  //digitalWrite(TFT_I2C_POWER, HIGH);
-  // initialize TFT
+  // digitalWrite(TFT_I2C_POWER, HIGH);
+  //  initialize TFT
   delay(50);
   esp_sleep_enable_timer_wakeup(600000000); // 600  seconds to start with. sleep ten minutes
   Serial.println(esp_sleep_get_wakeup_cause());
@@ -78,7 +85,8 @@ void setup() {
   aht.getEvent(&humidity, &temp); // populate temp and
 
   // Serial.println(F("Initialized"));
-  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER){ // woken upp by timer; send data, do not start TFT, sleep
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER)
+  { // woken upp by timer; send data, do not start TFT, sleep
     Serial.println("Wakeup caused by timer");
     digitalWrite(LED_BUILTIN, 1);
     io.connect();
@@ -124,29 +132,54 @@ void setup() {
     io.run();
     Serial.println("iorun");
     Serial.print(io.run());
-  }else{ // ext/RST wakeup, show TFT
+  }
+  else
+  { // ext/RST wakeup, show TFT
     Serial.println("Visa på screen, klicka eller sov 6");
 
     display.begin();
-    // large block of text
     display.clearBuffer();
-    display.display();
-    display.setCursor(10, 10);
-    display.setTextSize(3);
-    //display.print(temp.temperature, 1);
-    display.print(21.42, 1);
-    display.setCursor(10, 40);
+    display.setTextColor(EPD_BLACK);
+    display.setFont(&FreeSerifBold24pt7b);
+    display.setCursor(3, 37);
+    //  display.print(temp.temperature, 1);
+    display.print("21.4");
+    display.setFont(&FreeSans9pt7b);
+    display.setTextSize(1);
+    display.setCursor(88, 15);
+    display.println("o");
+    display.setCursor(3, 55);
+    // display.setTextSize(2);
+    //  display.print(humidity.relative_humidity, 1);
+    display.println("Fukt: 61 %");
+    // display.println(63.2);
+    // display.setCursor(3, 70);
+    // display.setTextSize(2);
+    //  display.print(humidity.relative_humidity, 1);
+    display.setCursor(3, 98);
+    display.setTextColor(EPD_RED);
+    display.println("09 apr 15:50");
+    display.setCursor(3, 65);
+    display.setFont();
+    display.setTextSize(1);
+    display.setTextColor(EPD_BLACK);
+    display.println("3.72 V  21.2 %");
+    display.setTextSize(1);
+    display.setCursor(3, 70);
+    display.println("Senast uppdaterad:");
     display.setTextSize(2);
-    //display.print(humidity.relative_humidity, 1);
-    display.print(61.42, 1);
+    display.setCursor(150, 30);
+    display.setTextSize(2);
+    // display.print(humidity.relative_humidity, 1);
+    display.println("QR:");
     display.display();
     delay(1000);
-
   }
 }
 
-void loop() {
-  //don't do anything!
+void loop()
+{
+  // don't do anything!
 }
 
 // message handler for the ISO-8601 feed
@@ -162,5 +195,4 @@ void handleISO(char *data, uint16_t len)
   timeStamp = data.substring(splitT + 1, data.length() - 1);
   Serial.println(timeStamp);
   */
-
 }
