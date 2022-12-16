@@ -48,10 +48,7 @@ int day;
 void setup()
 {
   Serial.begin(115200);
-  while (!Serial)
-  {
-    delay(10);
-  }
+ 
   // Allocate memory to store the QR code.
   // memory size depends on version number
   uint8_t qrcodeData[qrcode_getBufferSize(QRcode_Version)];
@@ -256,6 +253,8 @@ void setup()
     }
   }
   display.display();
+  esp_sleep_enable_timer_wakeup(600000000); // 600  seconds to start with. sleep ten minutes
+  esp_deep_sleep_start();
 }
 
 void loop()
