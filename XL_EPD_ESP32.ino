@@ -1,4 +1,5 @@
-// #include "/Users/axelmansson/Documents/Arduino/libraries/QRCode/src/qrcode.h"
+// For ESP32S2 with 2.13 " eink monchrome and Si7021 temp sensor
+#include <Adafruit_Si7021.h>
 #include "qrcode.h"
 // #include <string>
 #include "Adafruit_ThinkInk.h"
@@ -11,24 +12,29 @@
 #include <Fonts/FreeMonoOblique12pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
 
-#define SRAM_CS 32
-#define EPD_CS 15
-#define EPD_DC 33
+//ESP32S2:
+#define SRAM_CS 6
+#define EPD_CS 9
+#define EPD_DC 10
 #define EPD_RESET -1 // can set to -1 and share with microcontroller Reset!
 #define EPD_BUSY -1  // can set to -1 to not use a pin (will wait a fixed delay)
 #define COLOR1 EPD_BLACK
 #define COLOR2 EPD_RED
-#define Lcd_X 212
-#define Lcd_Y 104
+#define Lcd_X 250//2.13 w 1680; 4195
+#define Lcd_Y 122
 
 // Uncomment the following line if you are using 2.13" EPD with IL0373
-ThinkInk_213_Tricolor_Z16 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
+// ThinkInk_213_Tricolor_Z16 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
+
+// Uncomment the following line if you are using 2.13" Monochrome EPD with SSD1680
+ThinkInk_213_Mono_BN display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
+// ThinkInk_213_Mono_B74 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
 
 AdafruitIO_Time *iso = io.time(AIO_TIME_ISO);
 Adafruit_LC709203F lc;
-Adafruit_AHTX0 aht;
+Adafruit_Si7021 sensor = Adafruit_Si7021();
 QRCode qrcode;
-AdafruitIO_Group *group = io.group("ESP32EPD");
+AdafruitIO_Group *group = io.group("ESP32S2");
 
 // version 3 code with double sized code and starting at y0 = 2 is good
 // version 3 with ECC_LOW gives 53 "bytes". Size= (QRcode_Version*4 +17)*pixelsize =132
@@ -38,8 +44,7 @@ int pixelsize = 3;
 const int QRcode_Version = 4; //  set the version (range 1->40)
 const int QRcode_ECC = 0;     //  set the Error Correction level (range 0-3) or symbolic (ECC_LOW, ECC_MEDIUM, ECC_QUARTILE and ECC_HIGH)
 
-float temptemp = 19.7;
-sensors_event_t humidity, temp; // global for show foo
+//For ISO time feed
 String month;
 int minute;
 int hour;
@@ -48,50 +53,42 @@ int day;
 void setup()
 {
   Serial.begin(115200);
-  while (!Serial)
+  /* while (!Serial)
   {
     delay(10);
   }
-  // Allocate memory to store the QR code.
+   */// Allocate memory to store the QR code.
   // memory size depends on version number
   uint8_t qrcodeData[qrcode_getBufferSize(QRcode_Version)];
-  qrcode_initText(&qrcode, qrcodeData, QRcode_Version, QRcode_ECC, "https://io.adafruit.com/axelmagnus/dashboards/esp32s2epd?kiosk=true");
+  qrcode_initText(&qrcode, qrcodeData, QRcode_Version, QRcode_ECC, "https://io.adafruit.com/axelmagnus/dashboards/battlevel?kiosk=true");
 
   pinMode(LED_BUILTIN, OUTPUT);
-
-  // pinMode(display_I2C_POWER, OUTPUT);
-  /* delay(1);
-  bool polarity = digitalRead(display_I2C_POWER);
-  // Serial.println(polarity); =0 usually
-  pinMode(display_I2C_POWER, OUTPUT);
-  digitalWrite(display_I2C_POWER, !polarity);
-   */
-  // digitalWrite(display_I2C_POWER, HIGH);
-  //  initialize display
-  delay(50);
-  esp_sleep_enable_timer_wakeup(600000000); // 600  seconds to start with. sleep ten minutes
-  Serial.println(esp_sleep_get_wakeup_cause());
-
+#if defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2)
+  pinMode(PIN_I2C_POWER, INPUT);
+  bool polarity = digitalRead(PIN_I2C_POWER);
+  pinMode(PIN_I2C_POWER, OUTPUT);
+  digitalWrite(PIN_I2C_POWER, 0); // turn on I2C
+#endif
+  
+  delay(200);
   iso->onMessage(handleISO);
 
   if (!lc.begin())
   {
     Serial.println(F("Couldnt find Adafruit LC709203F?\nMake sure a battery is plugged in!"));
   }
-  // Serial.println(F("Found LC709203F"));
+  Serial.println(F("Found LC709203F"));
   lc.setThermistorB(3950);
   lc.setPackSize(LC709203F_APA_100MAH);
   lc.setAlarmVoltage(3.8);
 
-  if (!aht.begin())
-  {
-    Serial.println("Could not find AHT? Check wiring");
+  if (!sensor.begin()){
+    Serial.println("Did not find Si7021 sensor!");
   }
-  aht.getEvent(&humidity, &temp); // populate temp and
-
+  
   // Serial.println(F("Initialized"));
   // if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER){ // woken upp by timer; send data, do not start display, sleep
-  Serial.println("Wakeup caused by timer");
+  //Serial.println("Wakeup caused by timer");
   digitalWrite(LED_BUILTIN, 1);
   io.connect();
   int wifiretries = 0; /*
@@ -99,13 +96,16 @@ void setup()
    Serial.println(WIFI_SSID);
    Serial.println(WIFI_PASS); */
   int led = 1;
-  while (io.status() < AIO_CONNECTED)
-  {
+  while (io.status() < AIO_CONNECTED){
     led = !led;
     digitalWrite(LED_BUILTIN, led);
     wifiretries++;
     if (wifiretries < 59)
     {
+      Serial.print("SSID: ");
+      Serial.print(WIFI_SSID);
+      Serial.print(" ");
+
       Serial.println(io.statusText());
       delay(500);
     }
@@ -117,14 +117,15 @@ void setup()
       esp_deep_sleep_start();
     }
   }
+  Serial.println(io.statusText());
   io.run();
   group->set("Percent", lc.cellPercent());
   group->set("Voltage", lc.cellVoltage());
-  group->set("Temp", temp.temperature);
-  group->set("Hum", humidity.relative_humidity);
+  group->set("Temp", sensor.readTemperature());
+  group->set("Hum", sensor.readHumidity());
   group->save();
   Serial.print("Temp ");
-  Serial.println(lc.cellVoltage(), 1);
+  Serial.println(sensor.readTemperature(), 1);
   digitalWrite(LED_BUILTIN, 1);
   delay(100);
   digitalWrite(LED_BUILTIN, 0);
@@ -147,14 +148,14 @@ void setup()
   display.setTextColor(EPD_BLACK);
   display.setFont(&FreeSerifBold24pt7b);
   display.setCursor(3, 37);
-  display.print(temp.temperature,1);
+  display.print(sensor.readTemperature(), 1);
   display.setFont(&FreeSans9pt7b);
   display.setTextSize(1);
   display.setCursor(88, 15);
   display.println("o");
   display.setCursor(3, 55);
   display.print("Fukt: ");
-  display.print(humidity.relative_humidity,0);
+  display.print(sensor.readHumidity(), 0);
   display.println(" %");
   // display.setCursor(3, 70);
   // display.setTextSize(2);
@@ -256,6 +257,10 @@ void setup()
     }
   }
   display.display();
+  display.flush();
+  digitalWrite(PIN_I2C_POWER, HIGH);//Turn off I2C, necessary? PD_config?
+  esp_sleep_enable_timer_wakeup(600000000); // 600  seconds to start with. sleep ten minutes
+  esp_deep_sleep_start();
 }
 
 void loop()
