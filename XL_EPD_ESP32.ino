@@ -30,6 +30,11 @@ Adafruit_AHTX0 aht;
 QRCode qrcode;
 AdafruitIO_Group *group = io.group("ESP32EPD");
 
+// version 3 code with double sized code and starting at y0 = 2 is good
+// version 3 with ECC_LOW gives 53 "bytes". Size= (QRcode_Version*4 +17)*pixelsize (=4)=132
+// The version of a QR code is a number between 1 and 40 (inclusive), which indicates the size of the QR code.
+
+int pixelsize = 3;
 const int QRcode_Version = 4; //  set the version (range 1->40)
 const int QRcode_ECC = 0;     //  set the Error Correction level (range 0-3) or symbolic (ECC_LOW, ECC_MEDIUM, ECC_QUARTILE and ECC_HIGH)
 
@@ -51,19 +56,19 @@ void setup()
   // Allocate memory to store the QR code.
   // memory size depends on version number
   uint8_t qrcodeData[qrcode_getBufferSize(QRcode_Version)];
-  qrcode_initText(&qrcode, qrcodeData, QRcode_Version, QRcode_ECC, "https://io.adafruit.com/axelmagnus/dashboards/esp32s2tft?kiosk=true");
+  qrcode_initText(&qrcode, qrcodeData, QRcode_Version, QRcode_ECC, "https://io.adafruit.com/axelmagnus/dashboards/esp32s2display?kiosk=true");
 
   pinMode(LED_BUILTIN, OUTPUT);
 
-  // pinMode(TFT_I2C_POWER, OUTPUT);
+  // pinMode(display_I2C_POWER, OUTPUT);
   /* delay(1);
-  bool polarity = digitalRead(TFT_I2C_POWER);
+  bool polarity = digitalRead(display_I2C_POWER);
   // Serial.println(polarity); =0 usually
-  pinMode(TFT_I2C_POWER, OUTPUT);
-  digitalWrite(TFT_I2C_POWER, !polarity);
+  pinMode(display_I2C_POWER, OUTPUT);
+  digitalWrite(display_I2C_POWER, !polarity);
    */
-  // digitalWrite(TFT_I2C_POWER, HIGH);
-  //  initialize TFT
+  // digitalWrite(display_I2C_POWER, HIGH);
+  //  initialize display
   delay(50);
   esp_sleep_enable_timer_wakeup(600000000); // 600  seconds to start with. sleep ten minutes
   Serial.println(esp_sleep_get_wakeup_cause());
@@ -86,7 +91,7 @@ void setup()
 
   // Serial.println(F("Initialized"));
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER)
-  { // woken upp by timer; send data, do not start TFT, sleep
+  { // woken upp by timer; send data, do not start display, sleep
     Serial.println("Wakeup caused by timer");
     digitalWrite(LED_BUILTIN, 1);
     io.connect();
@@ -107,7 +112,7 @@ void setup()
       }
       else // wifi failed, sleep short time
       {
-        // tft.println("wifi failed, sleeping for 6 secs");
+        // display.println("wifi failed, sleeping for 6 secs");
         Serial.println("wifi failed, sleeping for 6 secs");
         esp_sleep_enable_timer_wakeup(6000000); // sleep for a minute if wifi fails
         esp_deep_sleep_start();
@@ -134,7 +139,7 @@ void setup()
     Serial.print(io.run());
   }
   else
-  { // ext/RST wakeup, show TFT
+  { // ext/RST wakeup, show display
     Serial.println("Visa på screen, klicka eller sov 6");
 
     display.begin();
@@ -156,8 +161,8 @@ void setup()
     // display.setCursor(3, 70);
     // display.setTextSize(2);
     //  display.print(humidity.relative_humidity, 1);
-    display.setCursor(3, 98);
-    display.setTextColor(EPD_RED);
+    display.setCursor(3, 94);
+    // display.setTextColor(EPD_RED);
     display.println("09 apr 15:50");
     display.setCursor(3, 65);
     display.setFont();
@@ -167,13 +172,83 @@ void setup()
     display.setTextSize(1);
     display.setCursor(3, 70);
     display.println("Senast uppdaterad:");
-    display.setTextSize(2);
-    display.setCursor(150, 30);
-    display.setTextSize(2);
-    // display.print(humidity.relative_humidity, 1);
-    display.println("QR:");
+
+    uint8_t x0 = 108; // Width= 106
+    uint8_t y0 = 2;   // Where to start the QR pic
+    //--------------------------------------------
+    // display QRcode
+    for (uint8_t y = 0; y < qrcode.size; y++)
+    {
+      for (uint8_t x = 0; x < qrcode.size; x++)
+      {
+
+        if (qrcode_getModule(&qrcode, x, y) == 0)
+        { // change to == 1 to make QR code with black background
+          
+          // uncomment to double the QRcode. Comment to display normal code size
+          for (int i = 0; i < pixelsize; i++)
+          {
+            for (int j = 0; j < pixelsize; j++)
+            {
+              display.drawPixel(x0 + pixelsize * x + j, y0 + pixelsize * y + i, EPD_WHITE);
+            }
+          }
+          /*
+          display.drawPixel(x0 + 3 * x, y0 + 3 * y, EPD_WHITE);
+          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y, EPD_WHITE);
+          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y, EPD_WHITE);
+          // display.drawPixel(x0 + 3 * x + 3, y0 + 3 * y, EPD_WHITE);
+
+          display.drawPixel(x0 + 3 * x, y0 + 3 * y + 1, EPD_WHITE);
+          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 1, EPD_WHITE);
+          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 1, EPD_WHITE);
+          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 1, EPD_WHITE);
+
+          display.drawPixel(x0 + 3 * x, y0 + 3 * y + 2, EPD_WHITE);
+          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 2, EPD_WHITE);
+          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 2, EPD_WHITE);
+          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 2, EPD_WHITE);
+          */
+
+          // display.drawPixel(x0 + 4 * x, y0 + 4 * y + 3, EPD_WHITE);
+          // display.drawPixel(x0 + 4 * x + 1, y0 + 4 * y + 3, EPD_WHITE);
+          // display.drawPixel(x0 + 4 * x + 2, y0 + 4 * y + 3, EPD_WHITE);
+          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 3, EPD_WHITE);
+        }
+        else
+        {
+          for (int i = 0; i < pixelsize; i++)
+          {
+            for (int j = 0; j < pixelsize; j++)
+            {
+              display.drawPixel(x0 + pixelsize * x + j, y0 + pixelsize * y + i, EPD_BLACK);
+            }
+          }
+          /*
+          display.drawPixel(x0 + 3 * x, y0 + 3 * y, EPD_BLACK);
+          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y, EPD_BLACK);
+          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y, EPD_BLACK);
+          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y, EPD_BLACK);
+
+          display.drawPixel(x0 + 3 * x, y0 + 3 * y + 1, EPD_BLACK);
+          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 1, EPD_BLACK);
+          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 1, EPD_BLACK);
+          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 1, EPD_BLACK);
+
+          display.drawPixel(x0 + 3 * x, y0 + 3 * y + 2, EPD_BLACK);
+          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 2, EPD_BLACK);
+          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 2, EPD_BLACK);
+          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 2, EPD_BLACK);
+
+          display.drawPixel(x0 + 3 * x, y0 + 3 * y + 3, EPD_BLACK);
+          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 3, EPD_BLACK);
+          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 3, EPD_BLACK);
+          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 3, EPD_BLACK);
+          */
+        }
+      }
+    }
     display.display();
-    delay(1000);
   }
 }
 
