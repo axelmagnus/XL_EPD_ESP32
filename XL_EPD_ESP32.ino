@@ -40,9 +40,10 @@ const int QRcode_ECC = 0;     //  set the Error Correction level (range 0-3) or 
 
 float temptemp = 19.7;
 sensors_event_t humidity, temp; // global for show foo
-String formattedDate;
-String dayStamp;
-String timeStamp;
+String month;
+int minute;
+int hour;
+int day;
 
 void setup()
 {
@@ -51,8 +52,6 @@ void setup()
   {
     delay(10);
   }
-  Serial.print("Starting");
-
   // Allocate memory to store the QR code.
   // memory size depends on version number
   uint8_t qrcodeData[qrcode_getBufferSize(QRcode_Version)];
@@ -74,6 +73,7 @@ void setup()
   Serial.println(esp_sleep_get_wakeup_cause());
 
   iso->onMessage(handleISO);
+
   if (!lc.begin())
   {
     Serial.println(F("Couldnt find Adafruit LC709203F?\nMake sure a battery is plugged in!"));
@@ -90,166 +90,172 @@ void setup()
   aht.getEvent(&humidity, &temp); // populate temp and
 
   // Serial.println(F("Initialized"));
-  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER)
-  { // woken upp by timer; send data, do not start display, sleep
-    Serial.println("Wakeup caused by timer");
-    digitalWrite(LED_BUILTIN, 1);
-    io.connect();
-    int wifiretries = 0; /*
-     Serial.println("Starting wifi");
-     Serial.println(WIFI_SSID);
-     Serial.println(WIFI_PASS); */
-    int led = 1;
-    while (io.status() < AIO_CONNECTED)
+  // if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER){ // woken upp by timer; send data, do not start display, sleep
+  Serial.println("Wakeup caused by timer");
+  digitalWrite(LED_BUILTIN, 1);
+  io.connect();
+  int wifiretries = 0; /*
+   Serial.println("Starting wifi");
+   Serial.println(WIFI_SSID);
+   Serial.println(WIFI_PASS); */
+  int led = 1;
+  while (io.status() < AIO_CONNECTED)
+  {
+    led = !led;
+    digitalWrite(LED_BUILTIN, led);
+    wifiretries++;
+    if (wifiretries < 59)
     {
-      led = !led;
-      digitalWrite(LED_BUILTIN, led);
-      wifiretries++;
-      if (wifiretries < 59)
-      {
-        Serial.println(io.statusText());
-        delay(500);
-      }
-      else // wifi failed, sleep short time
-      {
-        // display.println("wifi failed, sleeping for 6 secs");
-        Serial.println("wifi failed, sleeping for 6 secs");
-        esp_sleep_enable_timer_wakeup(6000000); // sleep for a minute if wifi fails
-        esp_deep_sleep_start();
-      }
+      Serial.println(io.statusText());
+      delay(500);
     }
-    io.run();
-    group->set("Percent", lc.cellPercent());
-    group->set("Voltage", lc.cellVoltage());
-    group->set("Temp", temp.temperature);
-    group->set("Hum", humidity.relative_humidity);
-    group->save();
-    Serial.print("Temp ");
-    Serial.println(temp.temperature);
-    digitalWrite(LED_BUILTIN, 1);
-    delay(100);
-    digitalWrite(LED_BUILTIN, 0);
-    delay(100);
-    digitalWrite(LED_BUILTIN, 1);
-    delay(100);
-    digitalWrite(LED_BUILTIN, 0);
-    delay(100);
-    io.run();
-    Serial.println("iorun");
-    Serial.print(io.run());
-  }
-  else
-  { // ext/RST wakeup, show display
-    Serial.println("Visa på screen, klicka eller sov 6");
-
-    display.begin();
-    display.clearBuffer();
-    display.setTextColor(EPD_BLACK);
-    display.setFont(&FreeSerifBold24pt7b);
-    display.setCursor(3, 37);
-    //  display.print(temp.temperature, 1);
-    display.print("21.4");
-    display.setFont(&FreeSans9pt7b);
-    display.setTextSize(1);
-    display.setCursor(88, 15);
-    display.println("o");
-    display.setCursor(3, 55);
-    // display.setTextSize(2);
-    //  display.print(humidity.relative_humidity, 1);
-    display.println("Fukt: 61 %");
-    // display.println(63.2);
-    // display.setCursor(3, 70);
-    // display.setTextSize(2);
-    //  display.print(humidity.relative_humidity, 1);
-    display.setCursor(3, 96);
-    // display.setTextColor(EPD_RED);
-    display.println("09 apr 15:50");
-    display.setCursor(3, 68);
-    display.setFont();
-    display.setTextSize(1);
-    display.setTextColor(EPD_BLACK);
-    display.println("3.72 V  21.2 %");
-    display.setTextSize(1);
-    display.setCursor(3, 72);
-    display.println("Senast uppdaterad:");
-
-    uint8_t x0 = 108; // Width= 106
-    uint8_t y0 = 2;   // Where to start the QR pic
-    //--------------------------------------------
-    // display QRcode
-    for (uint8_t y = 0; y < qrcode.size; y++)
+    else // wifi failed, sleep short time
     {
-      for (uint8_t x = 0; x < qrcode.size; x++)
-      {
+      // display.println("wifi failed, sleeping for 6 secs");
+      Serial.println("wifi failed, sleeping for 6 secs");
+      esp_sleep_enable_timer_wakeup(6000000); // sleep for a minute if wifi fails
+      esp_deep_sleep_start();
+    }
+  }
+  io.run();
+  group->set("Percent", lc.cellPercent());
+  group->set("Voltage", lc.cellVoltage());
+  group->set("Temp", temp.temperature);
+  group->set("Hum", humidity.relative_humidity);
+  group->save();
+  Serial.print("Temp ");
+  Serial.println(lc.cellVoltage(), 1);
+  digitalWrite(LED_BUILTIN, 1);
+  delay(100);
+  digitalWrite(LED_BUILTIN, 0);
+  delay(100);
+  digitalWrite(LED_BUILTIN, 1);
+  delay(100);
+  digitalWrite(LED_BUILTIN, 0);
+  delay(100);
+  io.run();
+  Serial.println("iorun");
+  Serial.println(io.run());
+  /* }
+   else
+   { // ext/RST wakeup, show display
+   */
+  Serial.println("Visa på screen, klicka eller sov 6");
 
-        if (qrcode_getModule(&qrcode, x, y) == 0)
-        { // change to == 1 to make QR code with black background
-          
-          // uncomment to double the QRcode. Comment to display normal code size
-          for (int i = 0; i < pixelsize; i++)
-          {
-            for (int j = 0; j < pixelsize; j++)
-            {
-              display.drawPixel(x0 + pixelsize * x + j, y0 + pixelsize * y + i, EPD_WHITE);
-            }
-          }
-          /*
-          display.drawPixel(x0 + 3 * x, y0 + 3 * y, EPD_WHITE);
-          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y, EPD_WHITE);
-          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y, EPD_WHITE);
-          // display.drawPixel(x0 + 3 * x + 3, y0 + 3 * y, EPD_WHITE);
+  display.begin();
+  display.clearBuffer();
+  display.setTextColor(EPD_BLACK);
+  display.setFont(&FreeSerifBold24pt7b);
+  display.setCursor(3, 37);
+  display.print(temp.temperature,1);
+  display.setFont(&FreeSans9pt7b);
+  display.setTextSize(1);
+  display.setCursor(88, 15);
+  display.println("o");
+  display.setCursor(3, 55);
+  display.print("Fukt: ");
+  display.print(humidity.relative_humidity,0);
+  display.println(" %");
+  // display.setCursor(3, 70);
+  // display.setTextSize(2);
+  //  display.print(humidity.relative_humidity, 1);
+  display.setCursor(1, 97);
+  // display.setTextColor(EPD_RED);
+  display.print(day);
+  display.print(" ");
+  display.print(month);
+  display.print(" ");
+  display.print(hour);
+  display.print(":");
+  display.print(minute);
+  display.print(" ");
+  display.setCursor(3, 68);
+  display.setFont();
+  display.setTextSize(1);
+  display.setTextColor(EPD_BLACK);
+  display.print(lc.cellVoltage(), 2);
+  display.print(" V ");
+  display.print(lc.cellPercent(), 1);
+  display.print(" %");
+  display.setCursor(3, 74);
+  display.println("Last updated:");
 
-          display.drawPixel(x0 + 3 * x, y0 + 3 * y + 1, EPD_WHITE);
-          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 1, EPD_WHITE);
-          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 1, EPD_WHITE);
-          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 1, EPD_WHITE);
+  uint8_t x0 = 108; // Width= 106
+  uint8_t y0 = 2;   // Where to start the QR pic
+  //--------------------------------------------
+  // display QRcode
+  for (uint8_t y = 0; y < qrcode.size; y++)
+  {
+    for (uint8_t x = 0; x < qrcode.size; x++)
+    {
 
-          display.drawPixel(x0 + 3 * x, y0 + 3 * y + 2, EPD_WHITE);
-          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 2, EPD_WHITE);
-          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 2, EPD_WHITE);
-          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 2, EPD_WHITE);
-          */
+      if (qrcode_getModule(&qrcode, x, y) == 0)
+      { // change to == 1 to make QR code with black background
 
-          // display.drawPixel(x0 + 4 * x, y0 + 4 * y + 3, EPD_WHITE);
-          // display.drawPixel(x0 + 4 * x + 1, y0 + 4 * y + 3, EPD_WHITE);
-          // display.drawPixel(x0 + 4 * x + 2, y0 + 4 * y + 3, EPD_WHITE);
-          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 3, EPD_WHITE);
-        }
-        else
+        // uncomment to double the QRcode. Comment to display normal code size
+        for (int i = 0; i < pixelsize; i++)
         {
-          for (int i = 0; i < pixelsize; i++)
+          for (int j = 0; j < pixelsize; j++)
           {
-            for (int j = 0; j < pixelsize; j++)
-            {
-              display.drawPixel(x0 + pixelsize * x + j, y0 + pixelsize * y + i, EPD_BLACK);
-            }
+            display.drawPixel(x0 + pixelsize * x + j, y0 + pixelsize * y + i, EPD_WHITE);
           }
-          /*
-          display.drawPixel(x0 + 3 * x, y0 + 3 * y, EPD_BLACK);
-          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y, EPD_BLACK);
-          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y, EPD_BLACK);
-          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y, EPD_BLACK);
-
-          display.drawPixel(x0 + 3 * x, y0 + 3 * y + 1, EPD_BLACK);
-          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 1, EPD_BLACK);
-          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 1, EPD_BLACK);
-          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 1, EPD_BLACK);
-
-          display.drawPixel(x0 + 3 * x, y0 + 3 * y + 2, EPD_BLACK);
-          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 2, EPD_BLACK);
-          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 2, EPD_BLACK);
-          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 2, EPD_BLACK);
-
-          display.drawPixel(x0 + 3 * x, y0 + 3 * y + 3, EPD_BLACK);
-          display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 3, EPD_BLACK);
-          display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 3, EPD_BLACK);
-          // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 3, EPD_BLACK);
-          */
         }
+        /*
+        display.drawPixel(x0 + 3 * x, y0 + 3 * y, EPD_WHITE);
+        display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y, EPD_WHITE);
+        display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y, EPD_WHITE);
+        // display.drawPixel(x0 + 3 * x + 3, y0 + 3 * y, EPD_WHITE);
+
+        display.drawPixel(x0 + 3 * x, y0 + 3 * y + 1, EPD_WHITE);
+        display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 1, EPD_WHITE);
+        display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 1, EPD_WHITE);
+        // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 1, EPD_WHITE);
+
+        display.drawPixel(x0 + 3 * x, y0 + 3 * y + 2, EPD_WHITE);
+        display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 2, EPD_WHITE);
+        display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 2, EPD_WHITE);
+        // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 2, EPD_WHITE);
+        */
+
+        // display.drawPixel(x0 + 4 * x, y0 + 4 * y + 3, EPD_WHITE);
+        // display.drawPixel(x0 + 4 * x + 1, y0 + 4 * y + 3, EPD_WHITE);
+        // display.drawPixel(x0 + 4 * x + 2, y0 + 4 * y + 3, EPD_WHITE);
+        // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 3, EPD_WHITE);
+      }
+      else
+      {
+        for (int i = 0; i < pixelsize; i++)
+        {
+          for (int j = 0; j < pixelsize; j++)
+          {
+            display.drawPixel(x0 + pixelsize * x + j, y0 + pixelsize * y + i, EPD_BLACK);
+          }
+        }
+        /*
+        display.drawPixel(x0 + 3 * x, y0 + 3 * y, EPD_BLACK);
+        display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y, EPD_BLACK);
+        display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y, EPD_BLACK);
+        // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y, EPD_BLACK);
+
+        display.drawPixel(x0 + 3 * x, y0 + 3 * y + 1, EPD_BLACK);
+        display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 1, EPD_BLACK);
+        display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 1, EPD_BLACK);
+        // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 1, EPD_BLACK);
+
+        display.drawPixel(x0 + 3 * x, y0 + 3 * y + 2, EPD_BLACK);
+        display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 2, EPD_BLACK);
+        display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 2, EPD_BLACK);
+        // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 2, EPD_BLACK);
+
+        display.drawPixel(x0 + 3 * x, y0 + 3 * y + 3, EPD_BLACK);
+        display.drawPixel(x0 + 3 * x + 1, y0 + 3 * y + 3, EPD_BLACK);
+        display.drawPixel(x0 + 3 * x + 2, y0 + 3 * y + 3, EPD_BLACK);
+        // display.drawPixel(x0 + 4 * x + 3, y0 + 4 * y + 3, EPD_BLACK);
+        */
       }
     }
-    display.display();
   }
+  display.display();
 }
 
 void loop()
@@ -262,6 +268,42 @@ void handleISO(char *data, uint16_t len)
 {
   Serial.print("ISO Feed: ");
   Serial.println(data);
+  struct tm tm = {0};
+  // Convert to tm struct
+  strptime(data, "%Y-%m-%dT%H:%M:%SZ", &tm);
+  Serial.println(&tm);
+  //Serial.println(tm[0]);
+  Serial.println(tm.tm_mon);
+  switch(tm.tm_mon){
+  case 1:
+    month = "jan";
+  case 2:
+    month = "feb";
+  case 3:
+    month = "mar";
+  case 4:
+    month = "apr";
+  case 5:
+    month = "may";
+  case 6:
+    month = "jun";
+  case 7:
+    month = "jul";
+  case 8:
+    month = "aug";
+  case 9:
+    month = "sep";
+  case 10:
+    month = "oct";
+  case 11:
+    month = "nov";
+  case 12:
+    month = "dec";
+  }
+  day=tm.tm_mday;
+  hour=tm.tm_hour+1; //TZ
+  minute=tm.tm_min;
+
   /*
   int splitT = data.indexOf("T");
   dayStamp = data.substring(0, splitT);
