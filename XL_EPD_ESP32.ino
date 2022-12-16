@@ -31,7 +31,7 @@ QRCode qrcode;
 AdafruitIO_Group *group = io.group("ESP32EPD");
 
 // version 3 code with double sized code and starting at y0 = 2 is good
-// version 3 with ECC_LOW gives 53 "bytes". Size= (QRcode_Version*4 +17)*pixelsize (=4)=132
+// version 3 with ECC_LOW gives 53 "bytes". Size= (QRcode_Version*4 +17)*pixelsize =132
 // The version of a QR code is a number between 1 and 40 (inclusive), which indicates the size of the QR code.
 
 int pixelsize = 3;
@@ -56,7 +56,7 @@ void setup()
   // Allocate memory to store the QR code.
   // memory size depends on version number
   uint8_t qrcodeData[qrcode_getBufferSize(QRcode_Version)];
-  qrcode_initText(&qrcode, qrcodeData, QRcode_Version, QRcode_ECC, "https://io.adafruit.com/axelmagnus/dashboards/esp32s2display?kiosk=true");
+  qrcode_initText(&qrcode, qrcodeData, QRcode_Version, QRcode_ECC, "https://io.adafruit.com/axelmagnus/dashboards/esp32s2epd?kiosk=true");
 
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -161,16 +161,16 @@ void setup()
     // display.setCursor(3, 70);
     // display.setTextSize(2);
     //  display.print(humidity.relative_humidity, 1);
-    display.setCursor(3, 94);
+    display.setCursor(3, 96);
     // display.setTextColor(EPD_RED);
     display.println("09 apr 15:50");
-    display.setCursor(3, 65);
+    display.setCursor(3, 68);
     display.setFont();
     display.setTextSize(1);
     display.setTextColor(EPD_BLACK);
     display.println("3.72 V  21.2 %");
     display.setTextSize(1);
-    display.setCursor(3, 70);
+    display.setCursor(3, 72);
     display.println("Senast uppdaterad:");
 
     uint8_t x0 = 108; // Width= 106
