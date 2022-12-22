@@ -142,7 +142,7 @@ void setup()
   digitalWrite(LED_BUILTIN, 0);
   delay(100);
   Serial.println("iorun");
-  while (!got_time))//Wait for ISO time
+  while (!got_time)//Wait for ISO time
   {
     Serial.println(io.run());
     led = !led;
