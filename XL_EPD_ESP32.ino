@@ -12,7 +12,7 @@
 #include <Fonts/FreeMonoOblique12pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
 
-//ESP32S2:
+// ESP32S2:
 #define SRAM_CS 6
 #define EPD_CS 9
 #define EPD_DC 10
@@ -20,15 +20,15 @@
 #define EPD_BUSY -1  // can set to -1 to not use a pin (will wait a fixed delay)
 #define COLOR1 EPD_BLACK
 #define COLOR2 EPD_RED
-#define Lcd_X 250//2.13 w 1680; 4195
+#define Lcd_X 250 // 2.13 w 1680; 4195
 #define Lcd_Y 122
 
 // Uncomment the following line if you are using 2.13" EPD with IL0373
 // ThinkInk_213_Tricolor_Z16 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
 
 // Uncomment the following line if you are using 2.13" Monochrome EPD with SSD1680
-ThinkInk_213_Mono_BN display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
-// ThinkInk_213_Mono_B74 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
+// ThinkInk_213_Mono_BN display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
+ThinkInk_213_Mono_B72 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY); // working better?? seems to be SSD1675 chipset?
 
 AdafruitIO_Time *iso = io.time(AIO_TIME_ISO);
 Adafruit_LC709203F lc;
@@ -37,18 +37,22 @@ QRCode qrcode;
 AdafruitIO_Group *group = io.group("ESP32S2");
 
 // version 3 code with double sized code and starting at y0 = 2 is good
-// version 3 with ECC_LOW gives 53 "bytes". Size= (QRcode_Version*4 +17)*pixelsize =132
+// version 3 with ECC_LOW gives 53 "bytes". Size= (QRcode_Version*4 +17)*pixelsize =37*3=111
 // The version of a QR code is a number between 1 and 40 (inclusive), which indicates the size of the QR code.
 
 int pixelsize = 3;
-const int QRcode_Version = 4; //  set the version (range 1->40)
+const int QRcode_Version = 5; //  set the version (range 1->40)
 const int QRcode_ECC = 0;     //  set the Error Correction level (range 0-3) or symbolic (ECC_LOW, ECC_MEDIUM, ECC_QUARTILE and ECC_HIGH)
 
-//For ISO time feed
+uint8_t QRx0 = 135; // Width= 116
+uint8_t QRy0 = 4;   // Where to start the QR pic
+
+// For ISO time feed
 String month;
 int minute;
 int hour;
 int day;
+bool got_time=0;// for making sure the time has been received before sleep
 
 void setup()
 {
@@ -57,7 +61,8 @@ void setup()
   {
     delay(10);
   }
-   */// Allocate memory to store the QR code.
+   */
+  // Allocate memory to store the QR code.
   // memory size depends on version number
   uint8_t qrcodeData[qrcode_getBufferSize(QRcode_Version)];
   qrcode_initText(&qrcode, qrcodeData, QRcode_Version, QRcode_ECC, "https://io.adafruit.com/axelmagnus/dashboards/battlevel?kiosk=true");
@@ -69,7 +74,7 @@ void setup()
   pinMode(PIN_I2C_POWER, OUTPUT);
   digitalWrite(PIN_I2C_POWER, 0); // turn on I2C
 #endif
-  
+
   delay(200);
   iso->onMessage(handleISO);
 
@@ -82,23 +87,23 @@ void setup()
   lc.setPackSize(LC709203F_APA_100MAH);
   lc.setAlarmVoltage(3.8);
 
-  if (!sensor.begin()){
+  if (!sensor.begin())
+  {
     Serial.println("Did not find Si7021 sensor!");
   }
-  
+
   // Serial.println(F("Initialized"));
   // if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER){ // woken upp by timer; send data, do not start display, sleep
-  //Serial.println("Wakeup caused by timer");
+  // Serial.println("Wakeup caused by timer");
   digitalWrite(LED_BUILTIN, 1);
   io.connect();
-  int wifiretries = 0; /*
-   Serial.println("Starting wifi");
-   Serial.println(WIFI_SSID);
-   Serial.println(WIFI_PASS); */
+  int wifiretries = 0;
   int led = 1;
-  while (io.status() < AIO_CONNECTED){
+  while (io.status() < AIO_CONNECTED)
+  {
     led = !led;
     digitalWrite(LED_BUILTIN, led);
+    delay(10);
     wifiretries++;
     if (wifiretries < 59)
     {
@@ -113,12 +118,14 @@ void setup()
     {
       // display.println("wifi failed, sleeping for 6 secs");
       Serial.println("wifi failed, sleeping for 6 secs");
+      Serial.flush();
       esp_sleep_enable_timer_wakeup(6000000); // sleep for a minute if wifi fails
       esp_deep_sleep_start();
     }
   }
   Serial.println(io.statusText());
   io.run();
+  digitalWrite(LED_BUILTIN, 0);
   group->set("Percent", lc.cellPercent());
   group->set("Voltage", lc.cellVoltage());
   group->set("Temp", sensor.readTemperature());
@@ -134,14 +141,20 @@ void setup()
   delay(100);
   digitalWrite(LED_BUILTIN, 0);
   delay(100);
-  io.run();
   Serial.println("iorun");
-  Serial.println(io.run());
+  while (!got_time))//Wait for ISO time
+  {
+    Serial.println(io.run());
+    led = !led;
+    digitalWrite(LED_BUILTIN, led);
+    delay(5);
+  }
   /* }
    else
    { // ext/RST wakeup, show display
    */
-  Serial.println("Visa på screen, klicka eller sov 6");
+  Serial.println(io.run());
+  Serial.println(hour);
 
   display.begin();
   display.clearBuffer();
@@ -153,36 +166,39 @@ void setup()
   display.setTextSize(1);
   display.setCursor(88, 15);
   display.println("o");
-  display.setCursor(3, 55);
+  display.setCursor(3, 58);
   display.print("Fukt: ");
   display.print(sensor.readHumidity(), 0);
   display.println(" %");
   // display.setCursor(3, 70);
   // display.setTextSize(2);
   //  display.print(humidity.relative_humidity, 1);
-  display.setCursor(1, 97);
+  display.setCursor(2, 117);
   // display.setTextColor(EPD_RED);
   display.print(day);
   display.print(" ");
   display.print(month);
   display.print(" ");
+  if (hour < 10)
+    display.print(" "); // if only one digit
   display.print(hour);
   display.print(":");
+  if (minute < 10)
+    display.print("0"); // if only one digit
   display.print(minute);
   display.print(" ");
-  display.setCursor(3, 68);
+  display.setCursor(3, 72);
   display.setFont();
-  display.setTextSize(1);
   display.setTextColor(EPD_BLACK);
   display.print(lc.cellVoltage(), 2);
   display.print(" V ");
   display.print(lc.cellPercent(), 1);
   display.print(" %");
-  display.setCursor(3, 74);
+
+  display.setTextSize(1);
+  display.setCursor(3, 90);
   display.println("Last updated:");
 
-  uint8_t x0 = 108; // Width= 106
-  uint8_t y0 = 2;   // Where to start the QR pic
   //--------------------------------------------
   // display QRcode
   for (uint8_t y = 0; y < qrcode.size; y++)
@@ -198,7 +214,7 @@ void setup()
         {
           for (int j = 0; j < pixelsize; j++)
           {
-            display.drawPixel(x0 + pixelsize * x + j, y0 + pixelsize * y + i, EPD_WHITE);
+            display.drawPixel(QRx0 + pixelsize * x + j, QRy0 + pixelsize * y + i, EPD_WHITE);
           }
         }
         /*
@@ -229,7 +245,7 @@ void setup()
         {
           for (int j = 0; j < pixelsize; j++)
           {
-            display.drawPixel(x0 + pixelsize * x + j, y0 + pixelsize * y + i, EPD_BLACK);
+            display.drawPixel(QRx0 + pixelsize * x + j, QRy0 + pixelsize * y + i, EPD_BLACK);
           }
         }
         /*
@@ -258,7 +274,8 @@ void setup()
   }
   display.display();
   display.flush();
-  digitalWrite(PIN_I2C_POWER, HIGH);//Turn off I2C, necessary? PD_config?
+  delay(1000);                              // to let EPD settle
+  digitalWrite(PIN_I2C_POWER, HIGH);        // Turn off I2C, necessary? PD_config?
   esp_sleep_enable_timer_wakeup(600000000); // 600  seconds to start with. sleep ten minutes
   esp_deep_sleep_start();
 }
@@ -277,9 +294,10 @@ void handleISO(char *data, uint16_t len)
   // Convert to tm struct
   strptime(data, "%Y-%m-%dT%H:%M:%SZ", &tm);
   Serial.println(&tm);
-  //Serial.println(tm[0]);
+  // Serial.println(tm[0]);
   Serial.println(tm.tm_mon);
-  switch(tm.tm_mon){
+  switch (tm.tm_mon)
+  {
   case 1:
     month = "jan";
   case 2:
@@ -305,16 +323,9 @@ void handleISO(char *data, uint16_t len)
   case 12:
     month = "dec";
   }
-  day=tm.tm_mday;
-  hour=tm.tm_hour+1; //TZ
-  minute=tm.tm_min;
+  day = tm.tm_mday;
+  hour = tm.tm_hour + 1; // TZ
+  minute = tm.tm_min;
 
-  /*
-  int splitT = data.indexOf("T");
-  dayStamp = data.substring(0, splitT);
-  Serial.println(dayStamp);
-  // Extract time
-  timeStamp = data.substring(splitT + 1, data.length() - 1);
-  Serial.println(timeStamp);
-  */
+  got_time=1;
 }
