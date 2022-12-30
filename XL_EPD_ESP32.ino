@@ -22,6 +22,7 @@
 #define COLOR2 EPD_RED
 #define Lcd_X 250 // 2.13 w 1680; 4195
 #define Lcd_Y 122
+#define AIO_DEBUG
 
 // Uncomment the following line if you are using 2.13" EPD with IL0373
 // ThinkInk_213_Tricolor_Z16 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
@@ -52,7 +53,7 @@ String month;
 int minute;
 int hour;
 int day;
-bool got_time=0;// for making sure the time has been received before sleep
+bool got_time = false; // for making sure the time has been received before sleep
 
 void setup()
 {
@@ -103,7 +104,7 @@ void setup()
   {
     led = !led;
     digitalWrite(LED_BUILTIN, led);
-    delay(10);
+    delay(50);
     wifiretries++;
     if (wifiretries < 59)
     {
@@ -123,16 +124,17 @@ void setup()
       esp_deep_sleep_start();
     }
   }
+  Serial.print("wifi done ");
+  Serial.println(sensor.readTemperature(), 1);
   Serial.println(io.statusText());
-  io.run();
   digitalWrite(LED_BUILTIN, 0);
+  io.run();
   group->set("Percent", lc.cellPercent());
   group->set("Voltage", lc.cellVoltage());
   group->set("Temp", sensor.readTemperature());
   group->set("Hum", sensor.readHumidity());
   group->save();
-  Serial.print("Temp ");
-  Serial.println(sensor.readTemperature(), 1);
+
   digitalWrite(LED_BUILTIN, 1);
   delay(100);
   digitalWrite(LED_BUILTIN, 0);
@@ -142,12 +144,12 @@ void setup()
   digitalWrite(LED_BUILTIN, 0);
   delay(100);
   Serial.println("iorun");
-  while (!got_time)//Wait for ISO time
+  while (io.run() < AIO_CONNECTED) // Wait for ISO time, || !got_time
   {
     Serial.println(io.run());
     led = !led;
     digitalWrite(LED_BUILTIN, led);
-    delay(5);
+    delay(1000);
   }
   /* }
    else
@@ -274,6 +276,7 @@ void setup()
   }
   display.display();
   display.flush();
+  io.wifi_disconnect();//release IP address?
   delay(1000);                              // to let EPD settle
   digitalWrite(PIN_I2C_POWER, HIGH);        // Turn off I2C, necessary? PD_config?
   esp_sleep_enable_timer_wakeup(600000000); // 600  seconds to start with. sleep ten minutes
@@ -327,5 +330,5 @@ void handleISO(char *data, uint16_t len)
   hour = tm.tm_hour + 1; // TZ
   minute = tm.tm_min;
 
-  got_time=1;
+  got_time = true;
 }
