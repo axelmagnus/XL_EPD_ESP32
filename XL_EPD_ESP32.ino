@@ -58,11 +58,10 @@ bool got_time = false; // for making sure the time has been received before slee
 void setup()
 {
   Serial.begin(115200);
-  /* while (!Serial)
-  {
+/*   while(!Serial){
     delay(10);
-  }
-   */
+  } */
+  Serial.println("Serial ready");
   // Allocate memory to store the QR code.
   // memory size depends on version number
   uint8_t qrcodeData[qrcode_getBufferSize(QRcode_Version)];
@@ -144,19 +143,19 @@ void setup()
   digitalWrite(LED_BUILTIN, 0);
   delay(100);
   Serial.println("iorun");
-  while (io.run() < AIO_CONNECTED) // Wait for ISO time, || !got_time
+  while (!got_time) // Wait for ISO time, || !got_time
   {
     Serial.println(io.run());
     led = !led;
     digitalWrite(LED_BUILTIN, led);
-    delay(1000);
+    delay(100);
   }
   /* }
    else
    { // ext/RST wakeup, show display
    */
-  Serial.println(io.run());
-  Serial.println(hour);
+  Serial.println("io.run done");
+  Serial.println(month);
 
   display.begin();
   display.clearBuffer();
@@ -275,7 +274,6 @@ void setup()
     }
   }
   display.display();
-  display.flush();
   io.wifi_disconnect();//release IP address?
   delay(1000);                              // to let EPD settle
   digitalWrite(PIN_I2C_POWER, HIGH);        // Turn off I2C, necessary? PD_config?
@@ -296,39 +294,51 @@ void handleISO(char *data, uint16_t len)
   struct tm tm = {0};
   // Convert to tm struct
   strptime(data, "%Y-%m-%dT%H:%M:%SZ", &tm);
+  Serial.print("tm: ");
   Serial.println(&tm);
-  // Serial.println(tm[0]);
   Serial.println(tm.tm_mon);
-  switch (tm.tm_mon)
-  {
-  case 1:
+  switch (tm.tm_mon){
+  case 0:
     month = "jan";
-  case 2:
+    break;
+  case 1:
     month = "feb";
-  case 3:
+    break;
+  case 2:
     month = "mar";
-  case 4:
+    break;
+  case 3:
     month = "apr";
-  case 5:
+    break;
+  case 4:
     month = "may";
-  case 6:
+    break;
+  case 5:
     month = "jun";
-  case 7:
+    break;
+  case 6:
     month = "jul";
-  case 8:
+    break;
+  case 7:
     month = "aug";
-  case 9:
+    break;
+  case 8:
     month = "sep";
-  case 10:
+    break;
+  case 9:
     month = "oct";
-  case 11:
+    break;
+  case 10:
     month = "nov";
-  case 12:
+    break;
+  case 11:
     month = "dec";
+    break;
   }
   day = tm.tm_mday;
   hour = tm.tm_hour + 1; // TZ
   minute = tm.tm_min;
+  Serial.println(month);
 
   got_time = true;
 }
