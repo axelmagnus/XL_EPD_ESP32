@@ -62,6 +62,7 @@ void setup()
     delay(10);
   } */
   Serial.println("Serial ready");
+
   // Allocate memory to store the QR code.
   // memory size depends on version number
   uint8_t qrcodeData[qrcode_getBufferSize(QRcode_Version)];
@@ -275,8 +276,9 @@ void setup()
   }
   display.display();
   io.wifi_disconnect();//release IP address?
-  delay(1000);                              // to let EPD settle
+  delay(100);                              // to let EPD settle
   digitalWrite(PIN_I2C_POWER, HIGH);        // Turn off I2C, necessary? PD_config?
+
   esp_sleep_enable_timer_wakeup(600000000); // 600  seconds to start with. sleep ten minutes
   esp_deep_sleep_start();
 }
