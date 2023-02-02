@@ -1,6 +1,6 @@
 {
-    "configuration": "FlashFreq=80,UploadSpeed=921600,DebugLevel=none,PartitionScheme=default",
-    "board": "esp32:esp32:featheresp32",
+    "configuration": "CDCOnBoot=cdc,MSCOnBoot=default,DFUOnBoot=default,UploadMode=cdc,PSRAM=enabled,PartitionScheme=tinyuf2,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=921600,DebugLevel=none,EraseFlash=none",
+    "board": "esp32:esp32:adafruit_feather_esp32s2",
     "sketch": "XL_EPD_ESP32.ino",
-    "port": "/dev/tty.usbserial-0160EA91"
+    "port": "/dev/tty.usbmodem01"
 }
