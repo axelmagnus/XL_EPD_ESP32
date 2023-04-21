@@ -45,8 +45,8 @@ int pixelsize = 3;
 const int QRcode_Version = 5; //  set the version (range 1->40)
 const int QRcode_ECC = 0;     //  set the Error Correction level (range 0-3) or symbolic (ECC_LOW, ECC_MEDIUM, ECC_QUARTILE and ECC_HIGH)
 
-uint8_t QRx0 = 135; // Width= 116
-uint8_t QRy0 = 4;   // Where to start the QR pic
+uint8_t QRx0 = 126; // Width= 116
+uint8_t QRy0 = 1;   // Where to start the QR pic
 
 // For ISO time feed
 String month;
@@ -58,15 +58,15 @@ bool got_time = false; // for making sure the time has been received before slee
 void setup()
 {
   Serial.begin(115200);
-/*   while(!Serial){
-    delay(10);
-  } */
+  /*   while(!Serial){
+      delay(10);
+    } */
   Serial.println("Serial ready");
 
   // Allocate memory to store the QR code.
   // memory size depends on version number
   uint8_t qrcodeData[qrcode_getBufferSize(QRcode_Version)];
-  qrcode_initText(&qrcode, qrcodeData, QRcode_Version, QRcode_ECC, "https://io.adafruit.com/axelmagnus/dashboards/battlevel?kiosk=true");
+  qrcode_initText(&qrcode, qrcodeData, QRcode_Version, QRcode_ECC, "https://io.adafruit.com/axelmagnus/dashboards/esp32s2epd?kiosk=true");
 
   pinMode(LED_BUILTIN, OUTPUT);
 #if defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2)
@@ -144,7 +144,8 @@ void setup()
   digitalWrite(LED_BUILTIN, 0);
   delay(100);
   Serial.println("iorun");
-  while (!got_time) // Wait for ISO time, || !got_time
+  long now = millis();
+  while (!got_time && (millis() - now < 5000)) // Wait for ISO time, for 5 seconds or got_time
   {
     Serial.println(io.run());
     led = !led;
@@ -159,23 +160,24 @@ void setup()
   Serial.println(month);
 
   display.begin();
+  display.setRotation(2);
   display.clearBuffer();
   display.setTextColor(EPD_BLACK);
   display.setFont(&FreeSerifBold24pt7b);
-  display.setCursor(3, 37);
+  display.setCursor(3, 39);
   display.print(sensor.readTemperature(), 1);
   display.setFont(&FreeSans9pt7b);
   display.setTextSize(1);
-  display.setCursor(88, 15);
+  display.setCursor(91, 17);
   display.println("o");
-  display.setCursor(3, 58);
+  display.setCursor(3, 60);
   display.print("Fukt: ");
   display.print(sensor.readHumidity(), 0);
   display.println(" %");
   // display.setCursor(3, 70);
   // display.setTextSize(2);
   //  display.print(humidity.relative_humidity, 1);
-  display.setCursor(2, 117);
+  display.setCursor(3, 111);
   // display.setTextColor(EPD_RED);
   display.print(day);
   display.print(" ");
@@ -189,7 +191,7 @@ void setup()
     display.print("0"); // if only one digit
   display.print(minute);
   display.print(" ");
-  display.setCursor(3, 72);
+  display.setCursor(3, 78);
   display.setFont();
   display.setTextColor(EPD_BLACK);
   display.print(lc.cellVoltage(), 2);
@@ -198,7 +200,7 @@ void setup()
   display.print(" %");
 
   display.setTextSize(1);
-  display.setCursor(3, 90);
+  display.setCursor(3, 85);
   display.println("Last updated:");
 
   //--------------------------------------------
@@ -275,9 +277,9 @@ void setup()
     }
   }
   display.display();
-  io.wifi_disconnect();//release IP address?
-  delay(100);                              // to let EPD settle
-  digitalWrite(PIN_I2C_POWER, HIGH);        // Turn off I2C, necessary? PD_config?
+  io.wifi_disconnect(); // release IP address?
+  delay(100);           // to let EPD settle
+  // digitalWrite(PIN_I2C_POWER, HIGH);        // Turn off I2C, necessary? PD_config?
 
   esp_sleep_enable_timer_wakeup(600000000); // 600  seconds to start with. sleep ten minutes
   esp_deep_sleep_start();
@@ -299,7 +301,8 @@ void handleISO(char *data, uint16_t len)
   Serial.print("tm: ");
   Serial.println(&tm);
   Serial.println(tm.tm_mon);
-  switch (tm.tm_mon){
+  switch (tm.tm_mon)
+  {
   case 0:
     month = "jan";
     break;
@@ -338,7 +341,7 @@ void handleISO(char *data, uint16_t len)
     break;
   }
   day = tm.tm_mday;
-  hour = tm.tm_hour + 1; // TZ
+  hour = tm.tm_hour + 2; // TZ
   minute = tm.tm_min;
   Serial.println(month);
 
