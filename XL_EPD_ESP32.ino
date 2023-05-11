@@ -149,8 +149,10 @@ void setup()
     Serial.print("slept_time_s: ");Serial.println(slept_time_s);
     sleepTime = sleepTime - slept_time_s;
     esp_sleep_enable_timer_wakeup(sleepTime * uS_TO_S_FACTOR);
+    digitalWrite(PIN_I2C_POWER, HIGH); // Turn off I2C, necessary? PD_config?
     Serial.print("sleeptime: ");Serial.println(sleepTime);
     gettimeofday(&sleep_enter_time, NULL);
+    
     esp_deep_sleep_start();
   } 
   //if not button press, go ahead and connect to internet
@@ -180,6 +182,7 @@ void setup()
       Serial.println("wifi failed, sleeping for 6 secs");
       Serial.flush();
       digitalWrite(LED_BUILTIN, 0);
+      digitalWrite(PIN_I2C_POWER, HIGH);      // Turn off I2C, necessary? PD_config?
       esp_sleep_enable_timer_wakeup(6000000); // sleep for a minute if wifi fails
       esp_deep_sleep_start();
     }
@@ -221,7 +224,7 @@ void setup()
   digitalWrite(LED_BUILTIN, 0);// be sure to turn off LED
   io.wifi_disconnect();                      // release IP address?
   delay(100);           // to let EPD settle
-  // digitalWrite(PIN_I2C_POWER, HIGH);        // Turn off I2C, necessary? PD_config?
+  digitalWrite(PIN_I2C_POWER, HIGH);        // Turn off I2C, necessary? PD_config?
   sleepTime=600;//timer wake up; reset to 600 seconds 
   esp_sleep_enable_timer_wakeup(sleepTime*uS_TO_S_FACTOR); // 600  seconds to start with. sleep ten minutes
   gettimeofday(&sleep_enter_time, NULL);
